@@ -9,9 +9,14 @@ const app = express();
 app.use(helmet());
 
 app.use(cors({
-  origin: '*',  // temporary - remove after testing
+  origin: [
+    'https://examschedulerfrontend.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+  ],
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
+  credentials: true
 }));
 
 app.use(express.json());
