@@ -1,38 +1,38 @@
-const router  = require('express').Router();
-const Hall    = require('../models/Hall');
-const { auth, adminOnly } = require('../middleware/auth');
+const router = require('express').Router();
+const Hall   = require('../models/Hall');
+const { auth, adminOnly, staffOrAdmin } = require('../middleware/auth');
 
-// GET — both can view
+// GET all halls — everyone can view (needed for scheduling form)
 router.get('/', auth, async (req, res) => {
   try {
-    const halls = await Hall.find().sort({ createdAt: -1 });
+    const halls = await Hall.find().sort({ name: 1 });
     res.json(halls);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// ADD — admin only
+// ADD hall — admin only
 router.post('/', auth, adminOnly, async (req, res) => {
   try {
     const hall = await Hall.create(req.body);
     res.status(201).json(hall);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 });
 
-// UPDATE — admin only
+// UPDATE hall — admin only
 router.put('/:id', auth, adminOnly, async (req, res) => {
   try {
     const hall = await Hall.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(hall);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 });
 
-// DELETE — admin only
+// DELETE hall — admin only
 router.delete('/:id', auth, adminOnly, async (req, res) => {
   try {
     await Hall.findByIdAndDelete(req.params.id);

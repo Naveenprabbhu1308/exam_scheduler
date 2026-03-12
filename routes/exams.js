@@ -2,23 +2,21 @@ const router  = require('express').Router();
 const Exam    = require('../models/Exam');
 const Hall    = require('../models/Hall');
 const Student = require('../models/Student');
-const { auth, adminOnly } = require('../middleware/auth');
+const { auth, adminOnly, staffOrAdmin } = require('../middleware/auth');
 
-// Generate seat labels A1-F5 for a hall of 30
+// Generate 30 seat labels A1–F5 for a hall
 const generateSeats = () => {
   const rows = ['A','B','C','D','E','F'];
   const cols = [1,2,3,4,5];
   const seats = [];
   rows.forEach((r) => cols.forEach((c) => seats.push(`${r}${c}`)));
-  return seats;
+  return seats; // 30 seats
 };
 
-// GET all exams
+// GET all exams — everyone can view
 router.get('/', auth, async (req, res) => {
   try {
-    const exams = await Exam.find()
-      .populate('hallIds')
-      .sort({ createdAt: -1 });
+    const exams = await Exam.find().populate('hallIds').sort({ date: 1 });
     res.json(exams);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -35,16 +33,27 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Schedule exam + auto assign seats
-router.post('/', auth, adminOnly, async (req, res) => {
+// POST schedule exam — staff or admin
+// Staff: auto-assigns seats only for their dept students
+// Admin: assigns seats for all students
+router.post('/', auth, staffOrAdmin, async (req, res) => {
   try {
     const { subject, date, time, hallIds } = req.body;
 
-    const halls    = await Hall.find({ _id: { $in: hallIds } });
-    const students = await Student.find().sort({ rollNo: 1 });
+    if (!subject || !date || !time || !hallIds || hallIds.length === 0) {
+      return res.status(400).json({ message: 'subject, date, time and at least one hall are required.' });
+    }
+
+    const halls      = await Hall.find({ _id: { $in: hallIds } });
+    const seatLabels = generateSeats();
+
+    // Staff sees only their dept students; admin sees all
+    const filter = req.user.role === 'staff'
+      ? { department: req.user.department }
+      : {};
+    const students = await Student.find(filter).sort({ rollNo: 1 });
 
     const seats      = [];
-    const seatLabels = generateSeats();
     let   studentIdx = 0;
 
     for (const hall of halls) {
@@ -61,17 +70,24 @@ router.post('/', auth, adminOnly, async (req, res) => {
         });
         studentIdx++;
       }
+      if (studentIdx >= students.length) break;
     }
 
-    const exam = await Exam.create({ subject, date, time, hallIds, seats });
+    const exam = await Exam.create({
+      subject, date, time, hallIds, seats,
+      scheduledBy:   req.user.id,
+      scheduledRole: req.user.role,
+      department:    req.user.role === 'staff' ? req.user.department : null,
+    });
+
     res.status(201).json(exam);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Delete exam
-router.delete('/:id', auth, adminOnly, async (req, res) => {
+// DELETE exam — staff or admin
+router.delete('/:id', auth, staffOrAdmin, async (req, res) => {
   try {
     await Exam.findByIdAndDelete(req.params.id);
     res.json({ message: 'Exam deleted' });

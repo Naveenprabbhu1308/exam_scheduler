@@ -15,6 +15,12 @@ const examSchema = new mongoose.Schema({
   time:     { type: String, required: true },
   hallIds:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Hall' }],
   seats:    [seatSchema],
+
+  // ✅ Added fields for staff scheduling
+  scheduledBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  scheduledRole: { type: String, enum: ['admin', 'staff'], default: null },
+  department:    { type: String, default: null }, // dept of staff who scheduled
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Exam', examSchema);

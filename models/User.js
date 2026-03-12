@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
     unique: true
   },
 
-  rollNo: { type: String },
+  rollNo: { type: String, default: null },
 
   password: {
     type: String,
@@ -27,14 +27,7 @@ const userSchema = new mongoose.Schema({
 
   department: {
     type: String,
-    enum: [
-      'CSE',
-      'IT',
-      'ECE',
-      'MECH',
-      'BIOTECH',
-      'MECHATRONICS'
-    ],
+    enum: ['CSE', 'IT', 'ECE', 'MECH', 'BIOTECH', 'MECHATRONICS', 'MECHANICAL'],
     default: null
   },
 
@@ -45,21 +38,16 @@ const userSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-
 // Hash password before saving
 userSchema.pre('save', async function (next) {
-
   if (!this.isModified('password')) return next();
-
   try {
     this.password = await bcrypt.hash(this.password, 10);
     next();
-  }
-  catch (err) {
+  } catch (err) {
     next(err);
   }
 });
-
 
 // Compare password
 userSchema.methods.comparePassword = function (password) {

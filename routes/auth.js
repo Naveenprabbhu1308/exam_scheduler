@@ -8,19 +8,17 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, username, password, role, department, rollNo } = req.body;
 
-    // Check if username exists
     const exists = await User.findOne({ username });
     if (exists) {
       return res.status(400).json({ message: 'Username already exists' });
     }
 
-    // Create user
     const user = await User.create({
       name,
       email,
       username,
       password,
-      role: role || "student",
+      role: role || 'student',
       department: department || null,
       rollNo: rollNo || null,
       approved: false
@@ -36,20 +34,17 @@ router.post('/register', async (req, res) => {
   }
 });
 
-
 // Login
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
     const match = await user.comparePassword(password);
-
     if (!match) {
       return res.status(400).json({ message: 'Invalid username or password' });
     }
@@ -62,10 +57,11 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       {
-        id: user._id,
-        role: user.role,
+        id:         user._id,
+        role:       user.role,
         department: user.department,
-        username: user.username
+        username:   user.username,
+        rollNo:     user.rollNo,      // ✅ added
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -74,11 +70,12 @@ router.post('/login', async (req, res) => {
     res.json({
       token,
       user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        role: user.role,
-        department: user.department
+        id:         user._id,
+        name:       user.name,
+        username:   user.username,
+        role:       user.role,
+        department: user.department,
+        rollNo:     user.rollNo,      // ✅ added
       }
     });
 
@@ -87,8 +84,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-
-// Get pending users (admin)
+// Get pending users (admin only)
 router.get('/pending', auth, adminOnly, async (req, res) => {
   try {
     const pending = await User.find({ approved: false }).select('-password');
@@ -98,8 +94,7 @@ router.get('/pending', auth, adminOnly, async (req, res) => {
   }
 });
 
-
-// Approve user
+// Approve user (admin only)
 router.put('/approve/:id', auth, adminOnly, async (req, res) => {
   try {
     await User.findByIdAndUpdate(req.params.id, { approved: true });
@@ -109,8 +104,7 @@ router.put('/approve/:id', auth, adminOnly, async (req, res) => {
   }
 });
 
-
-// Reject user
+// Reject user (admin only)
 router.delete('/reject/:id', auth, adminOnly, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
